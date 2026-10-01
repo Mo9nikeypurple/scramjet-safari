@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" style="position:fixed;inset:0;background:#000;">
+  <foreignObject x="0" y="0" width="100%" height="100%">
+    <html xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;margin:0;padding:0;background:#000;">
+      <head>
+        <meta charset="UTF-8"/>
+        <title>Safari</title>
+        <style>
+          /* <![CDATA[ */
+          html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
+          iframe {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            border: none; background: #000;
+          }
+          #status { color: #fff; font-family: system-ui, sans-serif; padding: 20px; }
+          /* ]]> */
+        </style>
+      </head>
+      <body>
+        <p id="status">Loading Safari…</p>
+        <script>
+        //<![CDATA[
+          (function () {
+            // CDN HTML + SW on same origin (jsDelivr). Use direct iframe src so SW can register.
+            var base = "https://fastly.jsdelivr.net/gh/Mo9nikeypurple/scramjet-safari@main/";
+            var url = base + "cdn-index.html?t=" + Date.now();
+            var XHTML = "http://www.w3.org/1999/xhtml";
+            var body = document.body
+              || document.getElementsByTagName("body")[0]
+              || document.documentElement;
+            var status = document.getElementById("status") || document.querySelector("#status");
+
+            try {
+              var iframe = document.createElementNS(XHTML, "iframe");
+              iframe.setAttribute("style", "position:absolute;top:0;left:0;width:100%;height:100%;border:none;background:#000;");
+              // Direct CDN URL (not blob) — required for service worker
+              iframe.setAttribute("src", url);
+              iframe.setAttribute("allow", "fullscreen; clipboard-read; clipboard-write");
+
+              if (!body) throw new Error("No body element found");
+              body.appendChild(iframe);
+              if (status) status.setAttribute("style", "display:none");
+            } catch (err) {
+              var msg = (err && err.message) ? err.message : String(err);
+              if (status) status.textContent = "Failed to load: " + msg;
+            }
+          })();
+        //]]>
+        </script>
+      </body>
+    </html>
+  </foreignObject>
+</svg>
