@@ -4,8 +4,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Safari</title>
-  <script src="https://cdn.jsdelivr.net/npm/@mercuryworkshop/scramjet@1.1.0/dist/scramjet.all.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mercuryworkshop/bare-mux@2.1.9/dist/index.js"></script>
   <style>
     :root {
       color-scheme: light dark;
@@ -22,11 +20,11 @@
     .traffic { display: flex; gap: 8px; margin-right: 4px; }
     .tl { width: 12px; height: 12px; border-radius: 50%; border: none; }
     .tl.close { background: #ff5f57; } .tl.min { background: #febc2e; } .tl.max { background: #28c840; }
+    .nav { display: flex; gap: 2px; }
     .nav button, .icon-btn {
       width: 28px; height: 28px; border: none; border-radius: 6px; background: transparent;
-      color: var(--text); cursor: pointer; display: grid; place-items: center;
+      color: var(--text); cursor: pointer; display: grid; place-items: center; font-size: 16px;
     }
-    .nav { display: flex; gap: 2px; }
     .urlbar {
       flex: 1; display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px 0 10px;
       background: rgba(0,0,0,.05); border-radius: 8px;
@@ -63,19 +61,13 @@
     .fav:hover { transform: scale(1.05); }
     .fav-ic {
       width: 64px; height: 64px; border-radius: 16px; background: var(--fav); box-shadow: var(--shadow);
-      display: grid; place-items: center; font-size: 18px; font-weight: 700; overflow: hidden; color: #fff;
+      display: grid; place-items: center; font-size: 18px; font-weight: 700; color: #fff;
     }
     .fav span { font-size: 11px; color: var(--muted); }
-    .hint, #status { margin-top: 20px; font-size: 12px; color: var(--muted); }
-    #err { color: #ff453a; margin-top: 10px; font-size: 13px; }
+    .hint { margin-top: 20px; font-size: 12px; color: var(--muted); }
     #sj-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: none; display: none; background: #fff; }
-    #sj-frame.active { display: block; }
-    .start.hidden { display: none; }
-    .wisp-row { margin-top: 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
-    .wisp-row input {
-      min-width: 260px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
-      padding: 0 10px; font-size: 12px;
-    }
+    #sj-frame.on { display: block; }
+    .start.hide { display: none; }
   </style>
 </head>
 <body>
@@ -100,39 +92,31 @@
   </div>
   <div id="stage">
     <div id="start" class="start">
-      <svg class="compass" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="30" fill="url(#g)"/><circle cx="32" cy="32" r="22" fill="none" stroke="#fff" stroke-width="2.5" opacity=".9"/><path d="M32 14l4 14 14 4-14 4-4 14-4-14-14-4z" fill="#fff"/><defs><linearGradient id="g" x1="8" y1="8" x2="56" y2="56"><stop stop-color="#5ac8fa"/><stop offset=".5" stop-color="#007aff"/><stop offset="1" stop-color="#5856d6"/></linearGradient></defs></svg>
+      <svg class="compass" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="30" fill="url(#g)"/><circle cx="32" cy="32" r="22" fill="none" stroke="#fff" stroke-width="2.5" opacity=".9"/><path d="M32 14l4 14 14 4-14 4-4 14-4-14-14-4 14-4z" fill="#fff"/><defs><linearGradient id="g" x1="8" y1="8" x2="56" y2="56"><stop stop-color="#5ac8fa"/><stop offset=".5" stop-color="#007aff"/><stop offset="1" stop-color="#5856d6"/></linearGradient></defs></svg>
       <div class="fav-label">Favorites</div>
       <div class="favorites" id="favorites"></div>
-      <div class="wisp-row">
-        <input id="wisp-input" type="text" placeholder="wss://your-wisp-server/wisp/" />
-        <button type="button" class="go" id="wisp-save" style="height:32px">Set Wisp</button>
-      </div>
-      <p class="hint">Static Scramjet · jsDelivr libs · falls back to public demo if SW blocked</p>
-      <p id="status">Ready</p>
-      <p id="err"></p>
+      <p class="hint">Safari UI · Scramjet via public demo (works inside SVG / jsDelivr)</p>
     </div>
+    <iframe id="sj-frame" title="content"></iframe>
   </div>
   <script>
   (function () {
-    var DEFAULT_WISP = localStorage.getItem("sj_wisp") || "wss://glseries.net/wisp/";
+    var ENGINE = "https://scramjet.mercurywork.shop/?goto=";
     var address = document.getElementById("sj-address");
     var form = document.getElementById("sj-form");
     var startEl = document.getElementById("start");
     var tabTitle = document.getElementById("tab-title");
-    var stage = document.getElementById("stage");
-    var statusEl = document.getElementById("status");
-    var errEl = document.getElementById("err");
-    var wispInput = document.getElementById("wisp-input");
-    wispInput.value = DEFAULT_WISP;
+    var frame = document.getElementById("sj-frame");
+    var lastUrl = "";
 
     var FAVS = [
-      { t: "Apple", u: "https://www.apple.com", bg: "#555", l: "" },
+      { t: "Apple", u: "https://www.apple.com", bg: "#555", l: "A" },
       { t: "Google", u: "https://www.google.com", bg: "#4285f4", l: "G" },
       { t: "YouTube", u: "https://www.youtube.com", bg: "#ff0000", l: "YT" },
       { t: "GitHub", u: "https://github.com", bg: "#24292f", l: "GH" },
       { t: "Reddit", u: "https://www.reddit.com", bg: "#ff4500", l: "r/" },
       { t: "X", u: "https://x.com", bg: "#0f0f0f", l: "X" },
-      { t: "Wikipedia", u: "https://www.wikipedia.org", bg: "#000", l: "W" },
+      { t: "Wikipedia", u: "https://www.wikipedia.org", bg: "#333", l: "W" },
       { t: "DuckDuckGo", u: "https://duckduckgo.com", bg: "#de5833", l: "DDG" },
       { t: "Bing", u: "https://www.bing.com", bg: "#00809d", l: "B" },
       { t: "Facebook", u: "https://www.facebook.com", bg: "#1877f2", l: "f" },
@@ -144,10 +128,10 @@
       var b = document.createElement("button");
       b.type = "button"; b.className = "fav"; b.title = f.t;
       var ic = document.createElement("div"); ic.className = "fav-ic";
-      ic.style.background = f.bg; ic.textContent = f.l || f.t[0];
+      ic.style.background = f.bg; ic.textContent = f.l;
       var s = document.createElement("span"); s.textContent = f.t;
       b.appendChild(ic); b.appendChild(s);
-      b.onclick = function () { navigate(f.u); };
+      b.onclick = function () { go(f.u); };
       root.appendChild(b);
     });
 
@@ -160,147 +144,38 @@
       return "https://duckduckgo.com/?q=" + encodeURIComponent(input);
     }
 
-    function swUrl() {
-      try { return new URL("sw.js", location.href).href; }
-      catch (e) { return "sw.js"; }
-    }
-
-    async function registerSW() {
-      if (!("serviceWorker" in navigator)) throw new Error("No service worker support");
-      var reg = await navigator.serviceWorker.register(swUrl(), { scope: "./", updateViaCache: "none" });
-      await navigator.serviceWorker.ready;
-      var wisp = localStorage.getItem("sj_wisp") || DEFAULT_WISP;
-      var send = function () {
-        if (navigator.serviceWorker.controller) {
-          navigator.serviceWorker.controller.postMessage({ type: "config", wispurl: wisp });
-        }
-      };
-      send();
-      navigator.serviceWorker.addEventListener("controllerchange", send);
-      return reg;
-    }
-
-    var scramjet = null;
-    var sjFrame = null;
-    var lastUrl = "";
-
-    function ensureController() {
-      if (scramjet) return scramjet;
-      var C = $scramjetLoadController().ScramjetController;
-      scramjet = new C({
-        files: {
-          wasm: "https://cdn.jsdelivr.net/npm/@mercuryworkshop/scramjet@1.1.0/dist/scramjet.wasm.wasm",
-          all: "https://cdn.jsdelivr.net/npm/@mercuryworkshop/scramjet@1.1.0/dist/scramjet.all.js",
-          sync: "https://cdn.jsdelivr.net/npm/@mercuryworkshop/scramjet@1.1.0/dist/scramjet.sync.js",
-        },
-      });
-      scramjet.init();
-      return scramjet;
-    }
-
-    async function ensureTransport() {
-      var wisp = localStorage.getItem("sj_wisp") || DEFAULT_WISP;
-      var connection = new BareMux.BareMuxConnection(
-        "https://cdn.jsdelivr.net/npm/@mercuryworkshop/bare-mux@2.1.9/dist/worker.js"
-      );
-      await connection.setTransport(
-        "https://cdn.jsdelivr.net/npm/@mercuryworkshop/epoxy-transport@2.1.28/dist/index.mjs",
-        [{ wisp: wisp }]
-      );
-    }
-
-    function showFrame() {
-      startEl.classList.add("hidden");
-      var el = document.getElementById("sj-frame");
-      if (el) el.classList.add("active");
-    }
-
-    function setTitle(url) {
-      try { tabTitle.textContent = new URL(url).hostname.replace(/^www\./, ""); }
-      catch (e) { tabTitle.textContent = "Safari"; }
-    }
-
-    function navigateFallback(url) {
-      var fr = document.getElementById("sj-frame");
-      if (!fr) {
-        fr = document.createElement("iframe");
-        fr.id = "sj-frame";
-        fr.setAttribute("style", "position:absolute;inset:0;width:100%;height:100%;border:none;background:#fff;");
-        stage.appendChild(fr);
-      }
-      fr.src = "https://scramjet.mercurywork.shop/?goto=" + encodeURIComponent(url);
-      showFrame();
-      setTitle(url);
-      statusEl.textContent = "Loaded (demo engine)";
-    }
-
-    async function navigate(raw) {
-      errEl.textContent = "";
+    function go(raw) {
       var url = search(String(raw || "").trim());
       if (!url) return;
       lastUrl = url;
       address.value = url;
-      statusEl.textContent = "Connecting\u2026";
-      try {
-        await registerSW();
-        await ensureTransport();
-        var ctrl = ensureController();
-        if (!sjFrame) {
-          var frame = ctrl.createFrame();
-          frame.frame.id = "sj-frame";
-          stage.appendChild(frame.frame);
-          sjFrame = frame;
-        }
-        showFrame();
-        setTitle(url);
-        sjFrame.go(url);
-        statusEl.textContent = "Loaded";
-      } catch (err) {
-        console.warn("Local Scramjet failed, using public demo:", err);
-        try {
-          navigateFallback(url);
-        } catch (err2) {
-          errEl.textContent = String(err && err.message ? err.message : err);
-          statusEl.textContent = "Error";
-        }
-      }
+      try { tabTitle.textContent = new URL(url).hostname.replace(/^www\./, ""); }
+      catch (e) { tabTitle.textContent = "Safari"; }
+      startEl.classList.add("hide");
+      frame.classList.add("on");
+      frame.src = ENGINE + encodeURIComponent(url);
     }
 
     form.addEventListener("submit", function (e) {
       e.preventDefault();
-      navigate(address.value);
+      go(address.value);
     });
     document.getElementById("btn-reload").onclick = function () {
-      if (lastUrl) {
-        if (sjFrame && sjFrame.go) sjFrame.go(lastUrl);
-        else navigateFallback(lastUrl);
-      }
+      if (lastUrl) frame.src = ENGINE + encodeURIComponent(lastUrl);
     };
     document.getElementById("btn-close").onclick = function () {
-      var fr = document.getElementById("sj-frame");
-      if (fr) {
-        fr.classList.remove("active");
-        startEl.classList.remove("hidden");
-        tabTitle.textContent = "Start Page";
-        address.value = "";
-      }
+      frame.classList.remove("on");
+      frame.src = "about:blank";
+      startEl.classList.remove("hide");
+      tabTitle.textContent = "Start Page";
+      address.value = "";
     };
-    document.getElementById("wisp-save").onclick = function () {
-      var v = wispInput.value.trim();
-      if (!v) return;
-      localStorage.setItem("sj_wisp", v);
-      DEFAULT_WISP = v;
-      statusEl.textContent = "Wisp saved. Open a site to connect.";
-      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage({ type: "config", wispurl: v });
-      }
+    document.getElementById("btn-back").onclick = function () {
+      try { frame.contentWindow.history.back(); } catch (e) {}
     };
-
-    registerSW().then(function () {
-      statusEl.textContent = "SW ready \u2014 enter a URL";
-    }).catch(function (e) {
-      statusEl.textContent = "Demo mode (SW blocked in this context)";
-    });
+    document.getElementById("btn-fwd").onclick = function () {
+      try { frame.contentWindow.history.forward(); } catch (e) {}
+    };
   })();
   </script>
 </body>
