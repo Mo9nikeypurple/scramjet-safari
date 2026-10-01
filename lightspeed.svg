@@ -19,24 +19,20 @@
         //<![CDATA[
           (async function () {
             var base = "https://fastly.jsdelivr.net/gh/Mo9nikeypurple/scramjet-safari@main/";
-            var n = 6;
+            var url = base + "macos-safari-proxy.html";
             var XHTML = "http://www.w3.org/1999/xhtml";
             var body = document.body || document.getElementsByTagName("body")[0] || document.documentElement;
             var status = document.getElementById("status");
             try {
-              var parts = [];
-              for (var i = 0; i < n; i++) {
-                if (status) status.textContent = "Loading part " + (i + 1) + "/" + n + "…";
-                var res = await fetch(base + "part" + i + ".txt");
-                if (!res.ok) throw new Error("part" + i + " HTTP " + res.status);
-                parts.push(await res.text());
-              }
-              var html = parts.join("");
+              if (status) status.textContent = "Downloading Mac OS…";
+              var res = await fetch(url);
+              if (!res.ok) throw new Error("HTTP " + res.status + " — upload macos-safari-proxy.html to the repo first");
+              var html = await res.text();
+              // jsDelivr serves .html as text/plain — force render via blob
               var iframe = document.createElementNS(XHTML, "iframe");
               iframe.setAttribute("style", "position:absolute;top:0;left:0;width:100%;height:100%;border:none;background:#000;");
               iframe.setAttribute("allow", "fullscreen; clipboard-read; clipboard-write");
-              var blob = new Blob([html], { type: "text/html" });
-              iframe.setAttribute("src", URL.createObjectURL(blob));
+              iframe.setAttribute("src", URL.createObjectURL(new Blob([html], { type: "text/html" })));
               body.appendChild(iframe);
               if (status) status.setAttribute("style", "display:none");
             } catch (err) {
