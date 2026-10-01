@@ -1,0 +1,105 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f5f5f7;
+  --chrome: rgba(246,246,246,0.92);
+  --text: #1d1d1f;
+  --muted: #86868b;
+  --accent: #007aff;
+  --border: rgba(0,0,0,0.08);
+  --fav: #fff;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: #1a1a1c; color: var(--text); overflow: hidden; }
+.chrome {
+  background: var(--chrome);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid var(--border);
+}
+.chrome-top {
+  display: flex; align-items: center; gap: 8px;
+  height: 44px; padding: 0 10px 0 12px;
+}
+.traffic { display: flex; gap: 8px; margin-right: 4px; }
+.tl {
+  width: 12px; height: 12px; border-radius: 50%; border: none; padding: 0; cursor: default;
+}
+.tl.close { background: #ff5f57; }
+.tl.min { background: #febc2e; }
+.tl.max { background: #28c840; }
+.nav { display: flex; gap: 2px; }
+.nav button, .icon-btn {
+  width: 28px; height: 28px; border: none; border-radius: 6px;
+  background: transparent; color: var(--text); cursor: pointer;
+  display: grid; place-items: center;
+}
+.nav button:hover, .icon-btn:hover { background: rgba(0,0,0,0.06); }
+.urlbar {
+  flex: 1; display: flex; align-items: center; gap: 6px;
+  height: 30px; padding: 0 8px 0 10px;
+  background: rgba(0,0,0,0.05); border-radius: 8px;
+  border: 1px solid transparent;
+}
+.urlbar:focus-within { background: #fff; border-color: rgba(0,122,255,0.35); box-shadow: 0 0 0 3px rgba(0,122,255,0.15); }
+.urlbar .lock { color: var(--muted); flex-shrink: 0; }
+.urlbar input {
+  flex: 1; border: none; background: transparent; outline: none;
+  font-size: 13px; color: var(--text); min-width: 0;
+}
+.urlbar input::placeholder { color: var(--muted); text-align: center; }
+.urlbar .go {
+  border: none; background: var(--accent); color: #fff;
+  font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 6px; cursor: pointer;
+}
+.tabs {
+  display: flex; align-items: flex-end; height: 28px; padding: 0 8px;
+  background: rgba(0,0,0,0.03);
+}
+.tab {
+  height: 24px; padding: 0 14px; display: flex; align-items: center;
+  background: #fff; border-radius: 8px 8px 0 0; font-size: 12px;
+  border: 1px solid var(--border); border-bottom: none; max-width: 180px;
+}
+.tab span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+#stage { position: relative; height: calc(100% - 72px); background: var(--bg); }
+.start {
+  height: 100%; overflow: auto;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 48px 24px 40px;
+  background: radial-gradient(ellipse 120% 80% at 50% -20%, #d6e4ff 0%, #e8eef8 35%, #f5f5f7 70%);
+}
+.compass { width: 56px; height: 56px; margin-bottom: 28px; filter: drop-shadow(0 2px 10px rgba(0,122,255,0.28)); }
+.fav-label { width: min(720px, 96%); font-size: 20px; font-weight: 700; margin-bottom: 16px; letter-spacing: -0.02em; }
+.favorites {
+  width: min(720px, 96%);
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 18px 12px; justify-items: center;
+}
+@media (max-width: 640px) { .favorites { grid-template-columns: repeat(4, 1fr); } }
+.fav {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  border: none; background: transparent; cursor: pointer; color: var(--text); font: inherit;
+  width: 100%; max-width: 88px;
+}
+.fav:hover { transform: scale(1.05); }
+.fav-ic {
+  width: 64px; height: 64px; border-radius: 16px; background: var(--fav);
+  box-shadow: var(--shadow), 0 0 0 0.5px rgba(0,0,0,0.04);
+  display: grid; place-items: center; font-size: 18px; font-weight: 700; overflow: hidden;
+}
+.fav-ic img { width: 32px; height: 32px; object-fit: contain; }
+.fav span { font-size: 11px; color: var(--muted); text-align: center; max-width: 80px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hint { margin-top: 28px; font-size: 12px; color: var(--muted); }
+.error { color: #ff453a; margin-top: 12px; font-size: 13px; }
+.error-code { color: #ff453a; font-size: 11px; max-width: 90%; overflow: auto; }
+
+#sj-frame {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  border: none; background: #fff; display: none;
+}
+#sj-frame.active { display: block; }
+#start.hidden { display: none; }
