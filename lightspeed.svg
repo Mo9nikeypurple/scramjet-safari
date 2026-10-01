@@ -4,66 +4,43 @@
     <html xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;margin:0;padding:0;background:#000;">
       <head>
         <meta charset="UTF-8"/>
-        <title>Safari</title>
+        <title>Mac OS</title>
         <style>
           /* <![CDATA[ */
-          html, body {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            overflow: hidden; background: #000;
-          }
-          iframe {
-            position: absolute; top: 0; left: 0;
-            width: 100%; height: 100%; border: none; background: #000;
-          }
-          #status {
-            color: #fff; font-family: system-ui, sans-serif; padding: 20px;
-          }
+          html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
+          iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; background: #000; }
+          #status { color: #fff; font-family: system-ui, sans-serif; padding: 20px; }
           /* ]]> */
         </style>
       </head>
       <body>
-        <p id="status">Loading Safari…</p>
+        <p id="status">Loading Mac OS…</p>
         <script>
         //<![CDATA[
           (async function () {
-            // Pin to no-SW commit — jsDelivr @main still caches old HTML with ServiceWorker
-            var base = "https://fastly.jsdelivr.net/gh/Mo9nikeypurple/scramjet-safari@bf663c95160343d188226cbc8b0a192fc6c283b2/";
-            var url = base + "cdn-index.html";
+            var base = "https://fastly.jsdelivr.net/gh/Mo9nikeypurple/scramjet-safari@main/";
+            var n = 6;
             var XHTML = "http://www.w3.org/1999/xhtml";
-            var body = document.body
-              || document.getElementsByTagName("body")[0]
-              || document.documentElement;
-            var status = document.getElementById("status")
-              || document.querySelector("#status");
-
+            var body = document.body || document.getElementsByTagName("body")[0] || document.documentElement;
+            var status = document.getElementById("status");
             try {
-              var res = await fetch(url);
-              if (!res.ok) throw new Error("HTTP " + res.status);
-              var html = await res.text();
-
-              // Safety: strip any leftover SW registration if a bad cache is hit
-              if (html.indexOf("serviceWorker") !== -1) {
-                html = html.replace(/navigator\.serviceWorker[\s\S]*?;/g, "/* sw removed */;");
+              var parts = [];
+              for (var i = 0; i < n; i++) {
+                if (status) status.textContent = "Loading part " + (i + 1) + "/" + n + "…";
+                var res = await fetch(base + "part" + i + ".txt");
+                if (!res.ok) throw new Error("part" + i + " HTTP " + res.status);
+                parts.push(await res.text());
               }
-
-              html = html.replace(/<head[^>]*>/i, function (m) {
-                return m + '\n    <base href="' + base + '">';
-              });
-
+              var html = parts.join("");
               var iframe = document.createElementNS(XHTML, "iframe");
-              iframe.setAttribute("style",
-                "position:absolute;top:0;left:0;width:100%;height:100%;border:none;background:#000;");
+              iframe.setAttribute("style", "position:absolute;top:0;left:0;width:100%;height:100%;border:none;background:#000;");
               iframe.setAttribute("allow", "fullscreen; clipboard-read; clipboard-write");
-
               var blob = new Blob([html], { type: "text/html" });
               iframe.setAttribute("src", URL.createObjectURL(blob));
-
-              if (!body) throw new Error("No body element found");
               body.appendChild(iframe);
               if (status) status.setAttribute("style", "display:none");
             } catch (err) {
-              var msg = (err && err.message) ? err.message : String(err);
-              if (status) status.textContent = "Failed to load: " + msg;
+              if (status) status.textContent = "Failed: " + ((err && err.message) || err);
             }
           })();
         //]]>
