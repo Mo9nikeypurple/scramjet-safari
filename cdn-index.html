@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Safari</title>
+  <script src="https://cdn.jsdelivr.net/npm/@mercuryworkshop/scramjet@1.1.0/dist/scramjet.all.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mercuryworkshop/bare-mux@2.1.9/dist/index.js"></script>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f5f5f7; --chrome: rgba(246,246,246,.92); --text: #1d1d1f; --muted: #86868b;
+      --accent: #007aff; --border: rgba(0,0,0,.08); --fav: #fff;
+      --shadow: 0 1px 3px rgba(0,0,0,.08);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #1a1a1c; color: var(--text); overflow: hidden; }
+    .chrome { background: var(--chrome); backdrop-filter: blur(24px); border-bottom: 1px solid var(--border); }
+    .chrome-top { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 10px 0 12px; }
+    .traffic { display: flex; gap: 8px; margin-right: 4px; }
+    .tl { width: 12px; height: 12px; border-radius: 50%; border: none; }
+    .tl.close { background: #ff5f57; } .tl.min { background: #febc2e; } .tl.max { background: #28c840; }
+    .nav button, .icon-btn {
+      width: 28px; height: 28px; border: none; border-radius: 6px; background: transparent;
+      color: var(--text); cursor: pointer; display: grid; place-items: center;
+    }
+    .nav { display: flex; gap: 2px; }
+    .urlbar {
+      flex: 1; display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px 0 10px;
+      background: rgba(0,0,0,.05); border-radius: 8px;
+    }
+    .urlbar:focus-within { background: #fff; box-shadow: 0 0 0 3px rgba(0,122,255,.15); }
+    .urlbar input {
+      flex: 1; border: none; background: transparent; outline: none; font-size: 13px; color: var(--text); min-width: 0;
+    }
+    .urlbar input::placeholder { color: var(--muted); text-align: center; }
+    .urlbar .go {
+      border: none; background: var(--accent); color: #fff; font-size: 12px; font-weight: 600;
+      padding: 4px 10px; border-radius: 6px; cursor: pointer;
+    }
+    .tabs { display: flex; height: 28px; padding: 0 8px; background: rgba(0,0,0,.03); align-items: flex-end; }
+    .tab {
+      height: 24px; padding: 0 14px; display: flex; align-items: center; background: #fff;
+      border-radius: 8px 8px 0 0; font-size: 12px; border: 1px solid var(--border); border-bottom: none; max-width: 180px;
+    }
+    #stage { position: relative; height: calc(100% - 72px); background: var(--bg); }
+    .start {
+      height: 100%; overflow: auto; display: flex; flex-direction: column; align-items: center;
+      padding: 48px 24px; background: radial-gradient(ellipse 120% 80% at 50% -20%, #d6e4ff, #f5f5f7 70%);
+    }
+    .compass { width: 56px; height: 56px; margin-bottom: 24px; }
+    .fav-label { width: min(720px,96%); font-size: 20px; font-weight: 700; margin-bottom: 14px; }
+    .favorites {
+      width: min(720px,96%); display: grid; grid-template-columns: repeat(6,1fr); gap: 16px 12px; justify-items: center;
+    }
+    @media (max-width:640px){ .favorites { grid-template-columns: repeat(4,1fr); } }
+    .fav {
+      display: flex; flex-direction: column; align-items: center; gap: 8px; border: none; background: transparent;
+      cursor: pointer; color: var(--text); font: inherit; max-width: 88px; width: 100%;
+    }
+    .fav:hover { transform: scale(1.05); }
+    .fav-ic {
+      width: 64px; height: 64px; border-radius: 16px; background: var(--fav); box-shadow: var(--shadow);
+      display: grid; place-items: center; font-size: 18px; font-weight: 700; overflow: hidden; color: #fff;
+    }
+    .fav span { font-size: 11px; color: var(--muted); }
+    .hint, #status { margin-top: 20px; font-size: 12px; color: var(--muted); }
+    #err { color: #ff453a; margin-top: 10px; font-size: 13px; }
+    #sj-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: none; display: none; background: #fff; }
+    #sj-frame.active { display: block; }
+    .start.hidden { display: none; }
+    .wisp-row { margin-top: 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+    .wisp-row input {
+      min-width: 260px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
+      padding: 0 10px; font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="chrome">
+    <div class="chrome-top">
+      <div class="traffic">
+        <button type="button" class="tl close" id="btn-close"></button>
+        <button type="button" class="tl min"></button>
+        <button type="button" class="tl max"></button>
+      </div>
+      <div class="nav">
+        <button type="button" id="btn-back" class="icon-btn" title="Back">‹</button>
+        <button type="button" id="btn-fwd" class="icon-btn" title="Forward">›</button>
+      </div>
+      <form id="sj-form" class="urlbar" autocomplete="off">
+        <input id="sj-address" type="text" placeholder="Search or enter website name" spellcheck="false" />
+        <button type="submit" class="go">Go</button>
+      </form>
+      <button type="button" id="btn-reload" class="icon-btn" title="Reload">↻</button>
+    </div>
+    <div class="tabs"><div class="tab"><span id="tab-title">Start Page</span></div></div>
+  </div>
+  <div id="stage">
+    <div id="start" class="start">
+      <svg class="compass" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="30" fill="url(#g)"/><circle cx="32" cy="32" r="22" fill="none" stroke="#fff" stroke-width="2.5" opacity=".9"/><path d="M32 14l4 14 14 4-14 4-4 14-4-14-14-4 14-4z" fill="#fff"/><defs><linearGradient id="g" x1="8" y1="8" x2="56" y2="56"><stop stop-color="#5ac8fa"/><stop offset=".5" stop-color="#007aff"/><stop offset="1" stop-color="#5856d6"/></linearGradient></defs></svg>
+      <div class="fav-label">Favorites</div>
+      <div class="favorites" id="favorites"></div>
+      <div class="wisp-row">
+        <input id="wisp-input" type="text" placeholder="wss://your-wisp-server/wisp/" />
+        <button type="button" class="go" id="wisp-save" style="height:32px">Set Wisp</button>
+      </div>
+      <p class="hint">Static Scramjet · libs from jsDelivr · needs a Wisp endpoint</p>
+      <p id="status">Ready</p>
+      <p id="err"></p>
+    </div>
+  </div>
+  <script>
+  (function () {
+    var DEFAULT_WISP = localStorage.getItem("sj_wisp") || "wss://glseries.net/wisp/";
+    var address = document.getElementById("sj-address");
+    var form = document.getElementById("sj-form");
+    var startEl = document.getElementById("start");
+    var tabTitle = document.getElementById("tab-title");
+    var stage = document.getElementById("stage");
+    var statusEl = document.getElementById("status");
+    var errEl = document.getElementById("err");
+    var wispInput = document.getElementById("wisp-input");
+    wispInput.value = DEFAULT_WISP;
+
+    var FAVS = [
+      { t: "Apple", u: "https://www.apple.com", bg: "#555", l: "" },
+      { t: "Google", u: "https://www.google.com", bg: "#4285f4", l: "G" },
+      { t: "YouTube", u: "https://www.youtube.com", bg: "#ff0000", l: "YT" },
+      { t: "GitHub", u: "https://github.com", bg: "#24292f", l: "GH" },
+      { t: "Reddit", u: "https://www.reddit.com", bg: "#ff4500", l: "r/" },
+      { t: "X", u: "https://x.com", bg: "#0f0f0f", l: "X" },
+      { t: "Wikipedia", u: "https://www.wikipedia.org", bg: "#000", l: "W" },
+      { t: "DuckDuckGo", u: "https://duckduckgo.com", bg: "#de5833", l: "DDG" },
+      { t: "Bing", u: "https://www.bing.com", bg: "#00809d", l: "B" },
+      { t: "Facebook", u: "https://www.facebook.com", bg: "#1877f2", l: "f" },
+      { t: "TikTok", u: "https://www.tiktok.com", bg: "#010101", l: "TT" },
+      { t: "iCloud", u: "https://www.icloud.com", bg: "#369", l: "\u2601" }
+    ];
+    var root = document.getElementById("favorites");
+    FAVS.forEach(function (f) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "fav"; b.title = f.t;
+      var ic = document.createElement("div"); ic.className = "fav-ic";
+      ic.style.background = f.bg; ic.textContent = f.l || f.t[0];
+      var s = document.createElement("span"); s.textContent = f.t;
+      b.appendChild(ic); b.appendChild(s);
+      b.onclick = function () { navigate(f.u); };
+      root.appendChild(b);
+    });
+
+    function search(input) {
+      try { return new URL(input).toString(); } catch (e) {}
+      try {
+        var u = new URL("http://" + input);
+        if (u.hostname.indexOf(".") > 0) return u.toString();
+      } catch (e2) {}
+      return "https://duckduckgo.com/?q=" + encodeURIComponent(input);
+    }
+
+    function swUrl() {
+      try { return new URL("sw.js", location.href).href; }
+      catch (e) { return "sw.js"; }
+    }
+
+    async function registerSW() {
+      if (!("serviceWorker" in navigator)) throw new Error("No service worker support");
+      var reg = await navigator.serviceWorker.register(swUrl(), { scope: "./", updateViaCache: "none" });
+      await navigator.serviceWorker.ready;
+      var wisp = localStorage.getItem("sj_wisp") || DEFAULT_WISP;
+      var send = function () {
+        if (navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({ type: "config", wispurl: wisp });
+        }
+      };
+      send();
+      navigator.serviceWorker.addEventListener("controllerchange", send);
+      return reg;
+    }
+
+    var scramjet = null;
+    var sjFrame = null;
+    var lastUrl = "";
+
+    function ensureController() {
+      if (scramjet) return scramjet;
+      var C = $scramjetLoadController().ScramjetController;
+      scramjet = new C({
+        files: {
+          wasm: "https://cdn.jsdelivr.net/npm/@mercuryworkshop/scramjet@1.1.0/dist/scramjet.wasm.wasm",
+          all: "https://cdn.jsdelivr.net/npm/@mercuryworkshop/scramjet@1.1.0/dist/scramjet.all.js",
+          sync: "https://cdn.jsdelivr.net/npm/@mercuryworkshop/scramjet@1.1.0/dist/scramjet.sync.js",
+        },
+      });
+      scramjet.init();
+      return scramjet;
+    }
+
+    async function ensureTransport() {
+      var wisp = localStorage.getItem("sj_wisp") || DEFAULT_WISP;
+      var connection = new BareMux.BareMuxConnection(
+        "https://cdn.jsdelivr.net/npm/@mercuryworkshop/bare-mux@2.1.9/dist/worker.js"
+      );
+      await connection.setTransport(
+        "https://cdn.jsdelivr.net/npm/@mercuryworkshop/epoxy-transport@2.1.28/dist/index.mjs",
+        [{ wisp: wisp }]
+      );
+    }
+
+    async function navigate(raw) {
+      errEl.textContent = "";
+      var url = search(String(raw || "").trim());
+      if (!url) return;
+      lastUrl = url;
+      address.value = url;
+      statusEl.textContent = "Connecting\u2026";
+      try {
+        await registerSW();
+        await ensureTransport();
+        var ctrl = ensureController();
+        if (!sjFrame) {
+          var frame = ctrl.createFrame();
+          frame.frame.id = "sj-frame";
+          stage.appendChild(frame.frame);
+          sjFrame = frame;
+        }
+        startEl.classList.add("hidden");
+        document.getElementById("sj-frame").classList.add("active");
+        try { tabTitle.textContent = new URL(url).hostname.replace(/^www\./, ""); }
+        catch (e) { tabTitle.textContent = "Safari"; }
+        sjFrame.go(url);
+        statusEl.textContent = "Loaded";
+      } catch (err) {
+        errEl.textContent = String(err && err.message ? err.message : err);
+        statusEl.textContent = "Error";
+      }
+    }
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      navigate(address.value);
+    });
+    document.getElementById("btn-reload").onclick = function () {
+      if (lastUrl && sjFrame) sjFrame.go(lastUrl);
+    };
+    document.getElementById("btn-close").onclick = function () {
+      var fr = document.getElementById("sj-frame");
+      if (fr) {
+        fr.classList.remove("active");
+        startEl.classList.remove("hidden");
+        tabTitle.textContent = "Start Page";
+        address.value = "";
+      }
+    };
+    document.getElementById("wisp-save").onclick = function () {
+      var v = wispInput.value.trim();
+      if (!v) return;
+      localStorage.setItem("sj_wisp", v);
+      DEFAULT_WISP = v;
+      statusEl.textContent = "Wisp saved. Open a site to connect.";
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: "config", wispurl: v });
+      }
+    };
+
+    registerSW().then(function () {
+      statusEl.textContent = "SW ready \u2014 enter a URL";
+    }).catch(function (e) {
+      statusEl.textContent = "SW not registered (open via https/jsDelivr top-level)";
+      errEl.textContent = String(e && e.message ? e.message : e);
+    });
+  })();
+  </script>
+</body>
+</html>
