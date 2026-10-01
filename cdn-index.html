@@ -100,14 +100,14 @@
   </div>
   <div id="stage">
     <div id="start" class="start">
-      <svg class="compass" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="30" fill="url(#g)"/><circle cx="32" cy="32" r="22" fill="none" stroke="#fff" stroke-width="2.5" opacity=".9"/><path d="M32 14l4 14 14 4-14 4-4 14-4-14-14-4 14-4z" fill="#fff"/><defs><linearGradient id="g" x1="8" y1="8" x2="56" y2="56"><stop stop-color="#5ac8fa"/><stop offset=".5" stop-color="#007aff"/><stop offset="1" stop-color="#5856d6"/></linearGradient></defs></svg>
+      <svg class="compass" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="30" fill="url(#g)"/><circle cx="32" cy="32" r="22" fill="none" stroke="#fff" stroke-width="2.5" opacity=".9"/><path d="M32 14l4 14 14 4-14 4-4 14-4-14-14-4z" fill="#fff"/><defs><linearGradient id="g" x1="8" y1="8" x2="56" y2="56"><stop stop-color="#5ac8fa"/><stop offset=".5" stop-color="#007aff"/><stop offset="1" stop-color="#5856d6"/></linearGradient></defs></svg>
       <div class="fav-label">Favorites</div>
       <div class="favorites" id="favorites"></div>
       <div class="wisp-row">
         <input id="wisp-input" type="text" placeholder="wss://your-wisp-server/wisp/" />
         <button type="button" class="go" id="wisp-save" style="height:32px">Set Wisp</button>
       </div>
-      <p class="hint">Static Scramjet · libs from jsDelivr · needs a Wisp endpoint</p>
+      <p class="hint">Static Scramjet · jsDelivr libs · falls back to public demo if SW blocked</p>
       <p id="status">Ready</p>
       <p id="err"></p>
     </div>
@@ -137,7 +137,7 @@
       { t: "Bing", u: "https://www.bing.com", bg: "#00809d", l: "B" },
       { t: "Facebook", u: "https://www.facebook.com", bg: "#1877f2", l: "f" },
       { t: "TikTok", u: "https://www.tiktok.com", bg: "#010101", l: "TT" },
-      { t: "iCloud", u: "https://www.icloud.com", bg: "#369", l: "\u2601" }
+      { t: "iCloud", u: "https://www.icloud.com", bg: "#369", l: "i" }
     ];
     var root = document.getElementById("favorites");
     FAVS.forEach(function (f) {
@@ -209,6 +209,31 @@
       );
     }
 
+    function showFrame() {
+      startEl.classList.add("hidden");
+      var el = document.getElementById("sj-frame");
+      if (el) el.classList.add("active");
+    }
+
+    function setTitle(url) {
+      try { tabTitle.textContent = new URL(url).hostname.replace(/^www\./, ""); }
+      catch (e) { tabTitle.textContent = "Safari"; }
+    }
+
+    function navigateFallback(url) {
+      var fr = document.getElementById("sj-frame");
+      if (!fr) {
+        fr = document.createElement("iframe");
+        fr.id = "sj-frame";
+        fr.setAttribute("style", "position:absolute;inset:0;width:100%;height:100%;border:none;background:#fff;");
+        stage.appendChild(fr);
+      }
+      fr.src = "https://scramjet.mercurywork.shop/?goto=" + encodeURIComponent(url);
+      showFrame();
+      setTitle(url);
+      statusEl.textContent = "Loaded (demo engine)";
+    }
+
     async function navigate(raw) {
       errEl.textContent = "";
       var url = search(String(raw || "").trim());
@@ -226,15 +251,18 @@
           stage.appendChild(frame.frame);
           sjFrame = frame;
         }
-        startEl.classList.add("hidden");
-        document.getElementById("sj-frame").classList.add("active");
-        try { tabTitle.textContent = new URL(url).hostname.replace(/^www\./, ""); }
-        catch (e) { tabTitle.textContent = "Safari"; }
+        showFrame();
+        setTitle(url);
         sjFrame.go(url);
         statusEl.textContent = "Loaded";
       } catch (err) {
-        errEl.textContent = String(err && err.message ? err.message : err);
-        statusEl.textContent = "Error";
+        console.warn("Local Scramjet failed, using public demo:", err);
+        try {
+          navigateFallback(url);
+        } catch (err2) {
+          errEl.textContent = String(err && err.message ? err.message : err);
+          statusEl.textContent = "Error";
+        }
       }
     }
 
@@ -243,7 +271,10 @@
       navigate(address.value);
     });
     document.getElementById("btn-reload").onclick = function () {
-      if (lastUrl && sjFrame) sjFrame.go(lastUrl);
+      if (lastUrl) {
+        if (sjFrame && sjFrame.go) sjFrame.go(lastUrl);
+        else navigateFallback(lastUrl);
+      }
     };
     document.getElementById("btn-close").onclick = function () {
       var fr = document.getElementById("sj-frame");
@@ -268,8 +299,7 @@
     registerSW().then(function () {
       statusEl.textContent = "SW ready \u2014 enter a URL";
     }).catch(function (e) {
-      statusEl.textContent = "SW not registered (open via https/jsDelivr top-level)";
-      errEl.textContent = String(e && e.message ? e.message : e);
+      statusEl.textContent = "Demo mode (SW blocked in this context)";
     });
   })();
   </script>
