@@ -26,9 +26,9 @@
         <script>
         //<![CDATA[
           (async function () {
-            // jsDelivr serves .html as text/plain — use blob type text/html so it renders
-            var base = "https://fastly.jsdelivr.net/gh/Mo9nikeypurple/scramjet-safari@main/";
-            var url = base + "cdn-index.html?t=" + Date.now();
+            // Pin to no-SW commit — jsDelivr @main still caches old HTML with ServiceWorker
+            var base = "https://fastly.jsdelivr.net/gh/Mo9nikeypurple/scramjet-safari@bf663c95160343d188226cbc8b0a192fc6c283b2/";
+            var url = base + "cdn-index.html";
             var XHTML = "http://www.w3.org/1999/xhtml";
             var body = document.body
               || document.getElementsByTagName("body")[0]
@@ -40,6 +40,11 @@
               var res = await fetch(url);
               if (!res.ok) throw new Error("HTTP " + res.status);
               var html = await res.text();
+
+              // Safety: strip any leftover SW registration if a bad cache is hit
+              if (html.indexOf("serviceWorker") !== -1) {
+                html = html.replace(/navigator\.serviceWorker[\s\S]*?;/g, "/* sw removed */;");
+              }
 
               html = html.replace(/<head[^>]*>/i, function (m) {
                 return m + '\n    <base href="' + base + '">';
