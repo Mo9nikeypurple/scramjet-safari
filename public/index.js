@@ -1,9 +1,4 @@
 "use strict";
-/**
- * Client: ScramjetController + BareMux + libcurl over local Wisp
- * Per https://docs.titaniumnetwork.org/proxies/scramjet/
- */
-
 const form = document.getElementById("sj-form");
 const address = document.getElementById("sj-address");
 const statusEl = document.getElementById("status");
@@ -46,9 +41,7 @@ FAVS.forEach((f) => {
 });
 
 function search(input, engine) {
-  try {
-    return new URL(input).toString();
-  } catch (_) {}
+  try { return new URL(input).toString(); } catch (_) {}
   try {
     const u = new URL("http://" + input);
     if (u.hostname.includes(".")) return u.toString();
@@ -57,9 +50,7 @@ function search(input, engine) {
 }
 
 async function registerSW() {
-  if (!("serviceWorker" in navigator)) {
-    throw new Error("Service workers not supported");
-  }
+  if (!("serviceWorker" in navigator)) throw new Error("Service workers not supported");
   await navigator.serviceWorker.register("/sw.js", { scope: "/" });
   await navigator.serviceWorker.ready;
 }
@@ -75,16 +66,13 @@ const scramjet = new ScramjetController({
 scramjet.init();
 
 const connection = new BareMux.BareMuxConnection("/baremux/worker.js");
-
 let sjFrame = null;
 let lastUrl = "";
 
 async function ensureTransport() {
   const wispUrl =
     (location.protocol === "https:" ? "wss" : "ws") +
-    "://" +
-    location.host +
-    "/wisp/";
+    "://" + location.host + "/wisp/";
   const current = await connection.getTransport();
   if (current !== "/libcurl/index.mjs") {
     await connection.setTransport("/libcurl/index.mjs", [{ websocket: wispUrl }]);
@@ -98,7 +86,6 @@ async function navigate(raw) {
   if (!url) return;
   lastUrl = url;
   address.value = url;
-
   try {
     await registerSW();
     await ensureTransport();
@@ -128,7 +115,6 @@ form.addEventListener("submit", (e) => {
   e.preventDefault();
   navigate(address.value);
 });
-
 document.getElementById("btn-reload").onclick = () => {
   if (lastUrl && sjFrame) sjFrame.go(lastUrl);
 };
@@ -143,10 +129,17 @@ document.getElementById("btn-close").onclick = () => {
 };
 
 registerSW()
-  .then(() => {
-    statusEl.textContent = "SW ready — enter a URL";
-  })
+  .then(() => { statusEl.textContent = "SW ready — enter a URL"; })
   .catch((e) => {
     statusEl.textContent = "SW registration failed";
     errEl.textContent = String(e && e.message ? e.message : e);
   });
+
+// Deep-link from Mac OS iframe: /?url=https://example.com or /?goto=...
+(function deepLink() {
+  try {
+    var q = new URLSearchParams(location.search);
+    var target = q.get("url") || q.get("goto");
+    if (target) setTimeout(function () { navigate(target); }, 400);
+  } catch (e) {}
+})();
