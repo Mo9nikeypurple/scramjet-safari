@@ -1,40 +1,51 @@
-# scramjet-safari
+# Real Scramjet Proxy (Safari UI)
 
-Mac OS web clone + Safari Scramjet proxy, ready for **jsDelivr**.
+This is a **real Scramjet proxy**, not an iframe of the public demo.
 
-## Quick open (after HTML is on this repo)
+Built from:
+- https://docs.titaniumnetwork.org/proxies/scramjet/
+- https://github.com/MercuryWorkshop/Scramjet-App
 
-**SVG wrapper (recommended):**
+## What runs
+
+| Piece | Path / role |
+|-------|-------------|
+| Fastify HTTP server | serves UI + static assets |
+| Wisp WebSocket | `/wisp/` — tunnel for proxied traffic |
+| Scramjet assets | `/scram/` from `@mercuryworkshop/scramjet` |
+| BareMux | `/baremux/` |
+| libcurl transport | `/libcurl/` |
+| Service worker | `/sw.js` — intercepts & rewrites |
+| Client | `ScramjetController` + `frame.go(url)` |
+
+## Run locally
+
+```bash
+git clone https://github.com/Mo9nikeypurple/scramjet-safari.git
+cd scramjet-safari
+npm install --registry=https://registry.npmjs.org/
+npm start
 ```
-https://fastly.jsdelivr.net/gh/Mo9nikeypurple/scramjet-safari@main/lightspeed.svg
-```
 
-Prefer a **commit SHA** instead of `@main` so the CDN does not stick to an old cache:
-```
-https://fastly.jsdelivr.net/gh/Mo9nikeypurple/scramjet-safari@COMMIT/lightspeed.svg
-```
+Open **http://localhost:8080**
 
-## Upload the Mac OS file (required once)
+## Deploy
 
-The full page is ~2.2MB. Upload it in the GitHub website:
+Needs a host that supports **Node.js + WebSockets** (not static jsDelivr):
 
-1. Open https://github.com/Mo9nikeypurple/scramjet-safari
-2. Click **Add file** → **Upload files**
-3. Upload `macos-safari-proxy.html` (from the chat artifacts / local copy)
-4. Commit to `main`
+- Railway / Render / Fly.io / a VPS
+- Set `PORT` if required
 
-Then open the **lightspeed.svg** jsDelivr link above.
+## Why not jsDelivr alone?
 
-### Why not push the 2.2MB file via API?
+A real Scramjet stack needs:
 
-GitHub’s API path we use here truncates multi‑MB bodies. The web **Upload files** UI accepts the full HTML fine. jsDelivr serves GitHub files up to 50MB.
+1. Same-origin service worker  
+2. Wisp WebSocket server  
+3. Node (or similar) to serve `/scram/`, `/baremux/`, `/libcurl/`
 
-## What this build does
+jsDelivr is static-only. Use this app on a real host.
 
-- Hides the top macOS menu bar
-- Safari uses Scramjet via `https://scramjet.mercurywork.shop/?goto=…`
-- SVG loads HTML as a `text/html` blob (jsDelivr serves `.html` as `text/plain`)
+## Safari UI
 
-## Local (best)
-
-Open `macos-safari-proxy.html` directly in Chrome/Edge/Firefox (no SVG needed).
+The start page is Safari-styled. Navigation goes through **your** Scramjet SW + Wisp, not `scramjet.mercurywork.shop`.

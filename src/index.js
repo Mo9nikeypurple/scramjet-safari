@@ -1,10 +1,16 @@
+/**
+ * Real Scramjet proxy server — follows
+ * https://docs.titaniumnetwork.org/proxies/scramjet/
+ * and MercuryWorkshop/Scramjet-App pattern.
+ *
+ * Serves: static UI, /scram/, /baremux/, /libcurl/, and Wisp at /wisp/
+ */
 import { createServer } from "node:http";
-import { fileURLToPath } from "url";
+import { fileURLToPath } from "node:url";
 import { hostname } from "node:os";
 import { server as wisp, logging } from "@mercuryworkshop/wisp-js/server";
 import Fastify from "fastify";
 import fastifyStatic from "@fastify/static";
-
 import { scramjetPath } from "@mercuryworkshop/scramjet/path";
 import { libcurlPath } from "@mercuryworkshop/libcurl-transport";
 import { baremuxPath } from "@mercuryworkshop/bare-mux/node";
@@ -56,27 +62,25 @@ fastify.register(fastifyStatic, {
   decorateReply: false,
 });
 
-fastify.setNotFoundHandler((req, reply) => {
-  return reply.code(404).type("text/html").sendFile("404.html");
+fastify.setNotFoundHandler((_req, reply) => {
+  return reply.code(404).type("text/plain").send("Not found");
 });
 
-fastify.server.on("listening", () => {
-  const address = fastify.server.address();
-  console.log("Scramjet Safari proxy listening on:");
-  console.log(`  http://localhost:${address.port}`);
-  console.log(`  http://${hostname()}:${address.port}`);
-});
-
-process.on("SIGINT", () => {
+function shutdown() {
+  console.log("Shutting down…");
   fastify.close();
   process.exit(0);
-});
-process.on("SIGTERM", () => {
-  fastify.close();
-  process.exit(0);
-});
+}
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
 
 let port = parseInt(process.env.PORT || "", 10);
 if (isNaN(port)) port = 8080;
 
-fastify.listen({ port, host: "0.0.0.0" });
+fastify.listen({ port, host: "0.0.0.0" }).then(() => {
+  console.log("Scramjet proxy listening:");
+  console.log(`  http://localhost:${port}`);
+  console.log(`  http://${hostname()}:${port}`);
+  console.log("  Wisp: /wisp/");
+  console.log("  Scramjet assets: /scram/");
+});

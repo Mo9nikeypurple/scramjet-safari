@@ -1,7 +1,7 @@
 {
   "name": "scramjet-safari",
   "version": "1.0.0",
-  "description": "Scramjet proxy with Safari-style UI (per Titanium Network docs)",
+  "description": "Real Scramjet proxy (TN docs) with Safari-style UI — not a demo iframe",
   "type": "module",
   "engines": {
     "node": ">=18.0.0"

@@ -1,60 +1,70 @@
 "use strict";
+/**
+ * Client: ScramjetController + BareMux + libcurl over local Wisp
+ * Per https://docs.titaniumnetwork.org/proxies/scramjet/
+ */
 
 const form = document.getElementById("sj-form");
 const address = document.getElementById("sj-address");
-const searchEngine = document.getElementById("sj-search-engine");
-const error = document.getElementById("sj-error");
-const errorCode = document.getElementById("sj-error-code");
+const statusEl = document.getElementById("status");
+const errEl = document.getElementById("err");
 const startEl = document.getElementById("start");
 const tabTitle = document.getElementById("tab-title");
 const stage = document.getElementById("stage");
 
 const FAVS = [
-  { title: "Apple", url: "https://www.apple.com", icon: "https://www.apple.com/favicon.ico" },
-  { title: "iCloud", url: "https://www.icloud.com", icon: "https://www.icloud.com/favicon.ico" },
-  { title: "DuckDuckGo", url: "https://duckduckgo.com", label: "DDG", bg: "linear-gradient(135deg,#de5833,#f5a623)" },
-  { title: "Wikipedia", url: "https://www.wikipedia.org", icon: "https://www.wikipedia.org/static/favicon/wikipedia.ico" },
-  { title: "Google", url: "https://www.google.com", icon: "https://www.google.com/favicon.ico" },
-  { title: "YouTube", url: "https://www.youtube.com", label: "YT", bg: "#ff0000" },
-  { title: "X", url: "https://x.com", label: "X", bg: "#0f0f0f" },
-  { title: "GitHub", url: "https://github.com", label: "GH", bg: "#24292f" },
-  { title: "Reddit", url: "https://www.reddit.com", label: "r/", bg: "#ff4500" },
-  { title: "Bing", url: "https://www.bing.com", label: "B", bg: "#00809d" },
-  { title: "Facebook", url: "https://www.facebook.com", label: "f", bg: "#1877f2" },
-  { title: "TikTok", url: "https://www.tiktok.com", label: "TT", bg: "#010101" },
+  { t: "Google", u: "https://www.google.com", bg: "#4285f4", l: "G" },
+  { t: "YouTube", u: "https://www.youtube.com", bg: "#ff0000", l: "YT" },
+  { t: "GitHub", u: "https://github.com", bg: "#24292f", l: "GH" },
+  { t: "Reddit", u: "https://www.reddit.com", bg: "#ff4500", l: "r/" },
+  { t: "X", u: "https://x.com", bg: "#0f0f0f", l: "X" },
+  { t: "Wikipedia", u: "https://www.wikipedia.org", bg: "#333", l: "W" },
+  { t: "DuckDuckGo", u: "https://duckduckgo.com", bg: "#de5833", l: "DDG" },
+  { t: "Bing", u: "https://www.bing.com", bg: "#00809d", l: "B" },
+  { t: "Apple", u: "https://www.apple.com", bg: "#555", l: "A" },
+  { t: "Facebook", u: "https://www.facebook.com", bg: "#1877f2", l: "f" },
+  { t: "TikTok", u: "https://www.tiktok.com", bg: "#010101", l: "TT" },
+  { t: "iCloud", u: "https://www.icloud.com", bg: "#369", l: "i" },
 ];
 
-const favRoot = document.getElementById("favorites");
+const root = document.getElementById("favorites");
 FAVS.forEach((f) => {
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "fav";
-  btn.title = f.title;
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "fav";
+  b.title = f.t;
   const ic = document.createElement("div");
   ic.className = "fav-ic";
-  if (f.icon) {
-    const img = document.createElement("img");
-    img.src = f.icon;
-    img.alt = "";
-    img.referrerPolicy = "no-referrer";
-    ic.appendChild(img);
-  } else {
-    ic.textContent = f.label || f.title[0];
-    if (f.bg) {
-      ic.style.background = f.bg;
-      ic.style.color = "#fff";
-    }
-  }
-  const span = document.createElement("span");
-  span.textContent = f.title;
-  btn.appendChild(ic);
-  btn.appendChild(span);
-  btn.addEventListener("click", () => navigate(f.url));
-  favRoot.appendChild(btn);
+  ic.style.background = f.bg;
+  ic.textContent = f.l;
+  const s = document.createElement("span");
+  s.textContent = f.t;
+  b.appendChild(ic);
+  b.appendChild(s);
+  b.onclick = () => navigate(f.u);
+  root.appendChild(b);
 });
 
-const { ScramjetController } = $scramjetLoadController();
+function search(input, engine) {
+  try {
+    return new URL(input).toString();
+  } catch (_) {}
+  try {
+    const u = new URL("http://" + input);
+    if (u.hostname.includes(".")) return u.toString();
+  } catch (_) {}
+  return engine.replace("%s", encodeURIComponent(input));
+}
 
+async function registerSW() {
+  if (!("serviceWorker" in navigator)) {
+    throw new Error("Service workers not supported");
+  }
+  await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+  await navigator.serviceWorker.ready;
+}
+
+const { ScramjetController } = $scramjetLoadController();
 const scramjet = new ScramjetController({
   files: {
     wasm: "/scram/scramjet.wasm.wasm",
@@ -62,7 +72,6 @@ const scramjet = new ScramjetController({
     sync: "/scram/scramjet.sync.js",
   },
 });
-
 scramjet.init();
 
 const connection = new BareMux.BareMuxConnection("/baremux/worker.js");
@@ -76,83 +85,68 @@ async function ensureTransport() {
     "://" +
     location.host +
     "/wisp/";
-  if ((await connection.getTransport()) !== "/libcurl/index.mjs") {
+  const current = await connection.getTransport();
+  if (current !== "/libcurl/index.mjs") {
     await connection.setTransport("/libcurl/index.mjs", [{ websocket: wispUrl }]);
   }
 }
 
 async function navigate(raw) {
-  error.textContent = "";
-  errorCode.textContent = "";
-  const url = search(raw, searchEngine.value);
+  errEl.textContent = "";
+  statusEl.textContent = "Connecting…";
+  const url = search(String(raw || "").trim(), "https://duckduckgo.com/?q=%s");
+  if (!url) return;
   lastUrl = url;
   address.value = url;
 
   try {
     await registerSW();
-  } catch (err) {
-    error.textContent = "Failed to register service worker.";
-    errorCode.textContent = String(err);
-    throw err;
-  }
-
-  try {
     await ensureTransport();
+    if (!sjFrame) {
+      const frame = scramjet.createFrame();
+      frame.frame.id = "sj-frame";
+      stage.appendChild(frame.frame);
+      sjFrame = frame;
+    }
+    startEl.classList.add("hide");
+    document.getElementById("sj-frame").classList.add("on");
+    try {
+      tabTitle.textContent = new URL(url).hostname.replace(/^www\./, "");
+    } catch (_) {
+      tabTitle.textContent = "Safari";
+    }
+    sjFrame.go(url);
+    statusEl.textContent = "Loaded";
   } catch (err) {
-    error.textContent = "Failed to set libcurl transport.";
-    errorCode.textContent = String(err);
-    throw err;
+    errEl.textContent = String(err && err.message ? err.message : err);
+    statusEl.textContent = "Error";
+    console.error(err);
   }
-
-  if (!sjFrame) {
-    const frame = scramjet.createFrame();
-    frame.frame.id = "sj-frame";
-    stage.appendChild(frame.frame);
-    sjFrame = frame;
-  }
-
-  startEl.classList.add("hidden");
-  document.getElementById("sj-frame").classList.add("active");
-  try {
-    tabTitle.textContent = new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    tabTitle.textContent = "Safari";
-  }
-  sjFrame.go(url);
 }
 
-form.addEventListener("submit", (event) => {
-  event.preventDefault();
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
   navigate(address.value);
 });
 
-document.getElementById("btn-reload").addEventListener("click", () => {
+document.getElementById("btn-reload").onclick = () => {
   if (lastUrl && sjFrame) sjFrame.go(lastUrl);
-});
-
-document.getElementById("btn-back").addEventListener("click", () => {
-  try {
-    const fr = document.getElementById("sj-frame");
-    if (fr && fr.contentWindow) fr.contentWindow.history.back();
-  } catch (e) {}
-});
-
-document.getElementById("btn-fwd").addEventListener("click", () => {
-  try {
-    const fr = document.getElementById("sj-frame");
-    if (fr && fr.contentWindow) fr.contentWindow.history.forward();
-  } catch (e) {}
-});
-
-document.getElementById("btn-close").addEventListener("click", () => {
+};
+document.getElementById("btn-close").onclick = () => {
   const fr = document.getElementById("sj-frame");
   if (fr) {
-    fr.classList.remove("active");
-    startEl.classList.remove("hidden");
+    fr.classList.remove("on");
+    startEl.classList.remove("hide");
     tabTitle.textContent = "Start Page";
     address.value = "";
   }
-});
+};
 
-// Warm SW on load
-registerSW().catch(() => {});
+registerSW()
+  .then(() => {
+    statusEl.textContent = "SW ready — enter a URL";
+  })
+  .catch((e) => {
+    statusEl.textContent = "SW registration failed";
+    errEl.textContent = String(e && e.message ? e.message : e);
+  });

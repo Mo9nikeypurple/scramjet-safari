@@ -1,3 +1,4 @@
+/* Scramjet service worker — TN docs pattern */
 importScripts("/scram/scramjet.all.js");
 
 const { ScramjetServiceWorker } = $scramjetLoadWorker();
@@ -14,3 +15,6 @@ async function handleRequest(event) {
 self.addEventListener("fetch", (event) => {
   event.respondWith(handleRequest(event));
 });
+
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
