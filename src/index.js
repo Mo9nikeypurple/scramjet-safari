@@ -1,10 +1,3 @@
-/**
- * Real Scramjet proxy server — follows
- * https://docs.titaniumnetwork.org/proxies/scramjet/
- * and MercuryWorkshop/Scramjet-App pattern.
- *
- * Serves: static UI, /scram/, /baremux/, /libcurl/, and Wisp at /wisp/
- */
 import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { hostname } from "node:os";
@@ -39,35 +32,16 @@ const fastify = Fastify({
   },
 });
 
-fastify.register(fastifyStatic, {
-  root: publicPath,
-  decorateReply: true,
-});
+fastify.register(fastifyStatic, { root: publicPath, decorateReply: true });
+fastify.register(fastifyStatic, { root: scramjetPath, prefix: "/scram/", decorateReply: false });
+fastify.register(fastifyStatic, { root: libcurlPath, prefix: "/libcurl/", decorateReply: false });
+fastify.register(fastifyStatic, { root: baremuxPath, prefix: "/baremux/", decorateReply: false });
 
-fastify.register(fastifyStatic, {
-  root: scramjetPath,
-  prefix: "/scram/",
-  decorateReply: false,
-});
-
-fastify.register(fastifyStatic, {
-  root: libcurlPath,
-  prefix: "/libcurl/",
-  decorateReply: false,
-});
-
-fastify.register(fastifyStatic, {
-  root: baremuxPath,
-  prefix: "/baremux/",
-  decorateReply: false,
-});
-
-fastify.setNotFoundHandler((_req, reply) => {
-  return reply.code(404).type("text/plain").send("Not found");
-});
+fastify.setNotFoundHandler((_req, reply) =>
+  reply.code(404).type("text/plain").send("Not found")
+);
 
 function shutdown() {
-  console.log("Shutting down…");
   fastify.close();
   process.exit(0);
 }
@@ -78,9 +52,7 @@ let port = parseInt(process.env.PORT || "", 10);
 if (isNaN(port)) port = 8080;
 
 fastify.listen({ port, host: "0.0.0.0" }).then(() => {
-  console.log("Scramjet proxy listening:");
+  console.log("Scramjet proxy:");
   console.log(`  http://localhost:${port}`);
   console.log(`  http://${hostname()}:${port}`);
-  console.log("  Wisp: /wisp/");
-  console.log("  Scramjet assets: /scram/");
 });

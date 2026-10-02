@@ -1,11 +1,9 @@
 {
   "name": "scramjet-safari",
   "version": "1.0.0",
-  "description": "Real Scramjet proxy (TN docs) with Safari-style UI — not a demo iframe",
+  "description": "Real Scramjet proxy (TN docs) with Safari-style UI",
   "type": "module",
-  "engines": {
-    "node": ">=18.0.0"
-  },
+  "engines": { "node": ">=18.0.0" },
   "scripts": {
     "start": "node src/index.js",
     "dev": "node src/index.js"

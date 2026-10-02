@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: scramjet-safari
+    runtime: node
+    plan: free
+    buildCommand: npm install --registry=https://registry.npmjs.org/
+    startCommand: npm start
